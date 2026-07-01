@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>North Star Support Bot</title>
+<style>
+  :root {
+    --forest: #1F3A2E;
+    --forest-deep: #142720;
+    --cream: #F5F0E6;
+    --terracotta: #C1622D;
+    --sage: #8FA98B;
+    --charcoal: #2B2B26;
+    --line: #D8D0BE;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--cream);
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    background-position: -1px -1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Work Sans", "Segoe UI", -apple-system, sans-serif;
+    color: var(--charcoal);
+    padding: 24px;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 460px;
+    background: #FFFDF8;
+    border-radius: 18px;
+    box-shadow: 0 18px 40px rgba(20, 39, 32, 0.18);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 640px;
+  }
+
+  header {
+    background: var(--forest);
+    color: var(--cream);
+    padding: 20px 22px 16px;
+    position: relative;
+  }
+
+  header .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .star-mark {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+  }
+
+  header h1 {
+    font-family: "Georgia", "Iowan Old Style", serif;
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    margin: 0;
+  }
+
+  header p {
+    margin: 4px 0 0 36px;
+    font-size: 12.5px;
+    color: var(--sage);
+  }
+
+  .ridge {
+    display: block;
+    width: 100%;
+    height: 14px;
+    margin-top: 14px;
+  }
+
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #FFFDF8;
+  }
+
+  .msg {
+    max-width: 82%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 14.5px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    animation: rise 0.22s ease-out;
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg.bot {
+    align-self: flex-start;
+    background: #EFEADD;
+    border-bottom-left-radius: 4px;
+    color: var(--charcoal);
+  }
+
+  .msg.user {
+    align-self: flex-end;
+    background: var(--terracotta);
+    color: #FFF7EF;
+    border-bottom-right-radius: 4px;
+  }
+
+  .msg.agent {
+    align-self: flex-start;
+    background: var(--forest);
+    color: var(--cream);
+    border-bottom-left-radius: 4px;
+    border-left: 3px solid var(--sage);
+  }
+
+  .quick-replies {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 20px 14px;
+    background: #FFFDF8;
+  }
+
+  .quick-replies button {
+    border: 1px solid var(--line);
+    background: #FFF7EF;
+    color: var(--forest-deep);
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    font-family: inherit;
+  }
+
+  .quick-replies button:hover {
+    background: var(--sage);
+    border-color: var(--sage);
+    color: #fff;
+  }
+
+  form {
+    display: flex;
+    gap: 8px;
+    padding: 14px 16px;
+    border-top: 1px solid var(--line);
+    background: #FFFDF8;
+  }
+
+  input[type="text"] {
+    flex: 1;
+    padding: 11px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    background: #fff;
+  }
+
+  input[type="text"]:focus {
+    border-color: var(--terracotta);
+  }
+
+  button[type="submit"] {
+    background: var(--terracotta);
+    color: #FFF7EF;
+    border: none;
+    border-radius: 999px;
+    padding: 0 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  button[type="submit"]:hover { background: #A9531F; }
+
+  button[type="submit"]:focus-visible,
+  input[type="text"]:focus-visible,
+  .quick-replies button:focus-visible {
+    outline: 2px solid var(--forest);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .msg { animation: none; }
+  }
+
+  @media (max-width: 500px) {
+    .card { height: 92vh; border-radius: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <header>
+    <div class="brand">
+      <svg class="star-mark" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2 L14.2 9.2 L21.5 9.6 L15.6 14 L17.8 21.2 L12 16.9 L6.2 21.2 L8.4 14 L2.5 9.6 L9.8 9.2 Z"
+              fill="#F5F0E6" stroke="#8FA98B" stroke-width="0.6"/>
+      </svg>
+      <h1>North Star Support Bot</h1>
+    </div>
+    <p>Outdoor gear help, on the trail or off it</p>
+    <svg class="ridge" viewBox="0 0 460 14" preserveAspectRatio="none">
+      <polyline points="0,14 40,4 80,12 120,2 170,11 210,5 260,13 300,3 340,10 380,1 420,9 460,14"
+                fill="none" stroke="#8FA98B" stroke-width="1.4" opacity="0.6"/>
+    </svg>
+  </header>
+
+  <div class="messages" id="messages"></div>
+  <div class="quick-replies" id="quickReplies"></div>
+
+  <form id="chatForm">
+    <input type="text" id="userInput" placeholder="Type a message…" autocomplete="off" />
+    <button type="submit">Send</button>
+  </form>
+</div>
+
+<script>
+  const messagesEl = document.getElementById('messages');
+  const formEl = document.getElementById('chatForm');
+  const inputEl = document.getElementById('userInput');
+  const quickRepliesEl = document.getElementById('quickReplies');
+
+  let sessionId = null;
+
+  const DEFAULT_QUICK_REPLIES = [
+    "Track my order",
+    "Returns & Exchanges",
+    "Product recommendation",
+    "Talk to a human",
+  ];
+
+  function addMessage(text, sender) {
+    const div = document.createElement('div');
+    div.className = 'msg ' + sender;
+    div.textContent = text;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function renderQuickReplies(show) {
+    quickRepliesEl.innerHTML = '';
+    if (!show) return;
+    DEFAULT_QUICK_REPLIES.forEach((label) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = label;
+      btn.addEventListener('click', () => sendMessage(label));
+      quickRepliesEl.appendChild(btn);
+    });
+  }
+
+  async function sendMessage(text) {
+    if (!text.trim()) return;
+    addMessage(text, 'user');
+    inputEl.value = '';
+    renderQuickReplies(false);
+
+    try {
+      const res = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, message: text }),
+      });
+      const data = await res.json();
+      sessionId = data.session_id;
+      const sender = data.reply.includes('[Live Agent]') ? 'agent' : 'bot';
+      addMessage(data.reply, sender);
+      renderQuickReplies(true);
+    } catch (err) {
+      addMessage("Sorry, something went wrong reaching the server. Please try again.", 'bot');
+    }
+  }
+
+  formEl.addEventListener('submit', (e) => {
+    e.preventDefault();
+    sendMessage(inputEl.value);
+  });
+
+  // Load welcome message on page load
+  (async function init() {
+    try {
+      const res = await fetch('/welcome');
+      const data = await res.json();
+      addMessage(data.message, 'bot');
+      renderQuickReplies(true);
+    } catch (err) {
+      addMessage("Hey there! I'm North Star Support Bot. How can I help?", 'bot');
+      renderQuickReplies(true);
+    }
+  })();
+</script>
+
+</body>
+</html>
