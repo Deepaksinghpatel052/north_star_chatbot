@@ -9,7 +9,7 @@ Developer program.
 The chatbot is hosted and ready to test — no setup, no API keys, no
 accounts required. Just open the link and start chatting:
 
-**Live URL:** _[add your Render URL here after deploying, e.g. https://north-star-chatbot.onrender.com]_
+**Live URL:** _https://north-star-chatbot.onrender.com_
 
 > **Note:** The demo is hosted on a free tier that sleeps after inactivity,
 > so the very first visit may take ~30 seconds to wake up. After that it
