@@ -183,10 +183,21 @@ class Session:
         context: Temporary data collected during a multi-step flow, such as
             the activity type chosen mid-way through the product
             recommendation flow. Cleared once that flow completes.
+        clarify_attempts: How many times in a row the user has given an
+            unrecognized answer to the current clarifying question. Used to
+            escape a flow gracefully (fall back to the main menu/options)
+            instead of asking the same question forever.
     """
 
     state: str = STATE_MAIN_MENU
     context: dict = field(default_factory=dict)
+    clarify_attempts: int = 0
+
+
+# After this many consecutive unrecognized answers in a guided flow, the
+# bot stops re-asking and falls back to the main menu / options so the
+# user is never stuck in a loop.
+MAX_CLARIFY_ATTEMPTS = 2
 
 
 def _menu_footer() -> str:
@@ -552,6 +563,7 @@ def process_message(session: Session, user_text: str) -> str:
         if outcome is not None:
             session.state, reply, matched = outcome
             session.context["activity"] = matched
+            session.clarify_attempts = 0
             return reply
 
         # Unrecognized answer — the user may have switched topics entirely
@@ -559,9 +571,18 @@ def process_message(session: Session, user_text: str) -> str:
         switched_reply = _handle_core_intent(session, result.intent)
         if switched_reply is not None:
             session.context.clear()
+            session.clarify_attempts = 0
             return switched_reply
 
-        # Genuinely unclear — ask again rather than guessing "general".
+        # Genuinely unclear. Re-ask a couple of times, but if the user keeps
+        # giving unrecognized answers, exit the flow to the main fallback so
+        # they're never stuck in a loop.
+        session.clarify_attempts += 1
+        if session.clarify_attempts >= MAX_CLARIFY_ATTEMPTS:
+            session.state = STATE_MAIN_MENU
+            session.context.clear()
+            session.clarify_attempts = 0
+            return FALLBACK_MESSAGE
         return REC_ACTIVITY_CLARIFY_MESSAGE
 
     if session.state == STATE_AWAITING_REC_WEATHER:
@@ -570,13 +591,21 @@ def process_message(session: Session, user_text: str) -> str:
         if outcome is not None:
             session.state, reply = outcome
             session.context.clear()
+            session.clarify_attempts = 0
             return reply
 
         switched_reply = _handle_core_intent(session, result.intent)
         if switched_reply is not None:
             session.context.clear()
+            session.clarify_attempts = 0
             return switched_reply
 
+        session.clarify_attempts += 1
+        if session.clarify_attempts >= MAX_CLARIFY_ATTEMPTS:
+            session.state = STATE_MAIN_MENU
+            session.context.clear()
+            session.clarify_attempts = 0
+            return FALLBACK_MESSAGE
         return REC_WEATHER_CLARIFY_MESSAGE
 
     if session.state == STATE_LIVE_AGENT:

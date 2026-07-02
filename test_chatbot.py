@@ -125,6 +125,25 @@ class TestRecommendation:
         bot(s, "Can you recommend a product?")
         assert "didn't quite catch" in bot(s, "Tajmahal")
 
+    def test_repeated_gibberish_escapes_to_main_fallback(self):
+        """After repeated unrecognized answers, the bot should stop looping
+        on the activity question and fall back to the main menu options."""
+        s = fresh()
+        bot(s, "Can you recommend a product?")
+        bot(s, "here is tajmahal")        # first unrecognized -> re-ask
+        reply = bot(s, "asdfghjkl")        # second unrecognized -> main fallback
+        assert "Track an order" in reply   # main options list, not the activity re-ask
+        assert "activity" not in reply.lower()
+
+    def test_recovers_after_one_gibberish(self):
+        """One bad answer followed by a valid one should still complete."""
+        s = fresh()
+        bot(s, "Can you recommend a product?")
+        bot(s, "blahblah")                 # unrecognized -> re-ask
+        bot(s, "hiking")                    # valid -> proceeds to weather
+        reply = bot(s, "warm")
+        assert "Hiking collection" in reply
+
 
 # ===========================================================================
 # USE CASE 4: Human Handoff
