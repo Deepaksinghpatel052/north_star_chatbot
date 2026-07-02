@@ -113,8 +113,9 @@ guessing or breaking the flow.
 
 ## Running the Tests
 
-The test suites need a couple of extra libraries listed in
-`requirements-dev.txt`:
+The project ships with a **pytest suite of 50 tests** covering every
+required use case plus a wide range of edge cases. The test suites need a
+couple of extra libraries listed in `requirements-dev.txt`:
 
 ```bash
 pip install -r requirements-dev.txt
@@ -123,13 +124,22 @@ pip install -r requirements-dev.txt
 **Option A — Pytest suite (recommended, no server needed):**
 
 ```bash
-pytest -v
+pytest            # compact "dots" report
+pytest -v         # verbose: shows each test name + PASS/FAIL + percentage
 ```
 
-This runs 44 tests directly against the conversation engine and prints a
-clean pass/fail report. It covers all 4 use cases, phrasing variations,
-typo tolerance, the delivered-order follow-up, fallback handling, human
-handoff + return-to-menu, shipping info, and edge cases.
+Sample output:
+
+```
+collected 50 items
+
+test_chatbot.py ..................................................  [100%]
+
+============================== 50 passed in 1.3s ==============================
+```
+
+Each dot is one passing test. The suite runs directly against the
+conversation engine (no server required).
 
 **Option B — HTTP flow script (runs against a live server):**
 
@@ -140,6 +150,23 @@ uvicorn main:app
 # In another terminal, run:
 python test_flows.py
 ```
+
+### What the tests cover (50 tests)
+
+| Area | Tests | Examples |
+|------|-------|----------|
+| **Order Tracking** | 6 | asks for order number; #111/#222/#333 exact statuses; invalid order; looking up a second order without re-typing the request |
+| **Returns & Exchanges** | 2 | exact policy text (30-day / unused / original packaging); returns link |
+| **Product Recommendation** | 8 | both clarifying questions; full flow; cold-weather upgrade; "no preference" answers; re-ask on unclear input; escaping the flow after repeated unclear input; recovery after one bad answer |
+| **Human Handoff** | 3 | explicit request; return to menu after handoff; escalate from a fallback |
+| **Intent Recognition** | 11 | phrasing variations for order tracking & returns; typo tolerance ("packeg", "trak", "retrn", "recomend") |
+| **Fallback Handling** | 9 | gibberish input; structurally-similar-but-unrelated input ("where is tajmahal", "what time is it"); fallback offers options |
+| **Shipping Info** | 1 | standard 3-5 / expedited 1-2 business days |
+| **Delivered-order Follow-up** | 7 | "all good" answers close cheerfully; reported problems hand off to an agent |
+| **Edge Cases** | 3 | empty message; `menu` reset; uppercase input |
+
+Because each test maps to a specific brief requirement, the passing report
+doubles as a requirements-coverage checklist.
 
 ## Deployment (Render)
 
