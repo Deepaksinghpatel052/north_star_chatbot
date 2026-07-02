@@ -501,8 +501,20 @@ def process_message(session: Session, user_text: str) -> str:
     if session.state == STATE_AWAITING_ORDER_NUMBER:
         digits = "".join(ch for ch in raw_text if ch.isdigit())
         if digits:
-            # Looks like an order number attempt — validate it as before.
+            # Looks like an order number attempt — validate it.
             session.state, reply = _handle_order_number(raw_text)
+            if session.state != STATE_AWAITING_ORDER_NUMBER:
+                # A valid order resolved the flow — reset the counter.
+                session.clarify_attempts = 0
+                return reply
+            # Invalid number: still awaiting. Count it as a failed attempt,
+            # and after too many, exit to the main fallback instead of
+            # asking for a number indefinitely.
+            session.clarify_attempts += 1
+            if session.clarify_attempts >= MAX_CLARIFY_ATTEMPTS:
+                session.state = STATE_MAIN_MENU
+                session.clarify_attempts = 0
+                return FALLBACK_MESSAGE
             return reply
 
         # No digits typed: the user likely switched topics instead of
@@ -511,9 +523,17 @@ def process_message(session: Session, user_text: str) -> str:
         # rather than incorrectly reporting "order not found".
         switched_reply = _handle_core_intent(session, result.intent)
         if switched_reply is not None:
+            session.clarify_attempts = 0
             return switched_reply
 
-        # Genuinely unclear input — ask again rather than guessing.
+        # Genuinely unclear input (e.g. gibberish). Re-ask a couple of
+        # times, but if the user keeps giving unrecognized input, exit to
+        # the main fallback so they're never stuck asking for a number.
+        session.clarify_attempts += 1
+        if session.clarify_attempts >= MAX_CLARIFY_ATTEMPTS:
+            session.state = STATE_MAIN_MENU
+            session.clarify_attempts = 0
+            return FALLBACK_MESSAGE
         return ORDER_NOT_FOUND_MESSAGE
 
     if session.state == STATE_AWAITING_DELIVERED_FOLLOWUP:

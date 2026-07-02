@@ -69,6 +69,44 @@ class TestOrderTracking:
         bot(s, "222")
         assert "Shipped, arriving tomorrow" in bot(s, "111")
 
+    def test_gibberish_while_awaiting_order_number_escapes(self):
+        """Repeated unrecognized input while awaiting an order number should
+        fall back to the main menu instead of looping on 'order not found'."""
+        s = fresh()
+        bot(s, "Track my order")
+        bot(s, "where is tajmahal")     # first unrecognized -> re-ask
+        reply = bot(s, "blahblah")       # second unrecognized -> main fallback
+        assert "Track an order" in reply
+        assert "couldn't find that order" not in reply
+
+    def test_invalid_then_valid_order_still_works(self):
+        """An invalid number followed by a valid one should still resolve."""
+        s = fresh()
+        bot(s, "Track my order")
+        bot(s, "444")                    # invalid
+        assert "Shipped, arriving tomorrow" in bot(s, "111")
+
+    def test_switch_topic_while_awaiting_order_number(self):
+        """Switching topics while awaiting an order number routes to the new
+        intent instead of reporting 'order not found'."""
+        s = fresh()
+        bot(s, "Track my order")
+        bot(s, "444")
+        assert "30-day returns" in bot(s, "what is your return policy")
+
+    def test_reported_scenario_delivered_then_invalid_then_gibberish(self):
+        """Exact reported sequence: several lookups, a delivered follow-up,
+        an invalid number, then gibberish — must not loop forever."""
+        s = fresh()
+        bot(s, "Where is my order")
+        bot(s, "111")
+        bot(s, "222")
+        bot(s, "333")
+        bot(s, "444")
+        bot(s, "where is tajmahal")
+        reply = bot(s, "blahblah")
+        assert "Track an order" in reply  # reaches the main fallback
+
 
 # ===========================================================================
 # USE CASE 2: Returns & Exchanges
