@@ -120,6 +120,96 @@ TRAINING_PHRASES: dict[str, list[str]] = {
     INTENT_DENY: ["no", "nope", "not really", "nah", "negative"],
 }
 
+# Anchor keywords per intent. A similarity match is only accepted if the
+# user's message also contains at least one of the intent's anchor words
+# (allowing for small typos). This prevents unrelated phrases that happen
+# to share filler/structure words — e.g. "where is tajmahal" sharing
+# "where is" with "where is my order" — from being misclassified. The
+# anchors are the topically-meaningful words for each intent, not filler.
+INTENT_ANCHORS: dict[str, list[str]] = {
+    INTENT_ORDER_TRACKING: [
+        "order", "orders", "package", "packages", "parcel", "shipment",
+        "track", "tracking", "delivery", "deliver", "delivered", "arrive",
+        "arriving", "shipped",
+    ],
+    INTENT_RETURNS: [
+        "return", "returns", "exchange", "exchanges", "refund", "refunds",
+        "send back", "sending back",
+    ],
+    INTENT_RECOMMENDATION: [
+        "recommend", "recommendation", "recommendations", "suggest",
+        "suggestion", "buy", "gear", "product", "products", "hiking",
+        "camping", "climbing", "outdoor",
+    ],
+    INTENT_HUMAN_HANDOFF: [
+        "human", "agent", "person", "representative", "rep", "support",
+        "customer service", "live", "someone", "staff",
+    ],
+    INTENT_SHIPPING_INFO: [
+        "shipping", "ship", "delivery", "deliver", "expedited", "standard",
+    ],
+    INTENT_MAIN_MENU: [
+        "menu", "options", "help", "back", "start over", "restart",
+    ],
+    # AFFIRM / DENY are short confirmations and are matched by exact word
+    # lists rather than similarity, so they don't need anchors here.
+}
+
+
+def _anchor_present(text: str, intent: str) -> bool:
+    """Whether the message contains an anchor keyword for the given intent.
+
+    Uses a small edit-distance tolerance so common typos (e.g. "ordr",
+    "packeg") still count as the anchor word present. Intents without an
+    anchor list (AFFIRM/DENY) are always considered anchored.
+    """
+    anchors = INTENT_ANCHORS.get(intent)
+    if not anchors:
+        return True
+
+    words = text.split()
+    for anchor in anchors:
+        # Multi-word anchors: simple substring check.
+        if " " in anchor:
+            if anchor in text:
+                return True
+            continue
+        # Single-word anchors: exact word, or a close typo of one.
+        for w in words:
+            if w == anchor or _is_close_typo(w, anchor):
+                return True
+    return False
+
+
+def _is_close_typo(word: str, target: str) -> bool:
+    """Cheap typo check: True if `word` is within a small edit distance of
+    `target`. Only meaningful for reasonably long words, to avoid short
+    words matching too eagerly."""
+    if abs(len(word) - len(target)) > 2:
+        return False
+    if len(target) < 4:
+        return word == target
+    distance = _levenshtein(word, target)
+    return distance <= 2 if len(target) >= 6 else distance <= 1
+
+
+def _levenshtein(a: str, b: str) -> int:
+    """Standard Levenshtein edit distance between two strings."""
+    if a == b:
+        return 0
+    if not a:
+        return len(b)
+    if not b:
+        return len(a)
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, start=1):
+        curr = [i]
+        for j, cb in enumerate(b, start=1):
+            cost = 0 if ca == cb else 1
+            curr.append(min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost))
+        prev = curr
+    return prev[-1]
+
 
 @dataclass
 class IntentResult:
@@ -209,7 +299,20 @@ class IntentClassifier:
         if best_score < CONFIDENCE_THRESHOLD:
             return IntentResult(INTENT_UNKNOWN, best_score)
 
-        return IntentResult(self._labels[best_idx], best_score)
+        best_intent = self._labels[best_idx]
+
+        # Confirm the match with a keyword anchor: the message must actually
+        # contain a topically-meaningful word for this intent (or a close
+        # typo of one). This blocks unrelated phrases that only matched on
+        # shared filler/structure words (e.g. "where is tajmahal"). Short
+        # confirmations (AFFIRM/DENY) have no anchors and are accepted as-is.
+        if best_intent in (INTENT_AFFIRM, INTENT_DENY):
+            return IntentResult(best_intent, best_score)
+
+        if _anchor_present(text, best_intent):
+            return IntentResult(best_intent, best_score)
+
+        return IntentResult(INTENT_UNKNOWN, best_score)
 
 
 # Singleton instance reused across requests (avoids re-fitting TF-IDF every call)

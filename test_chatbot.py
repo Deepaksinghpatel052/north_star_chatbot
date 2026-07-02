@@ -212,6 +212,18 @@ class TestFallback:
         s = fresh()
         assert "didn't quite catch" in bot(s, phrase)
 
+    @pytest.mark.parametrize("phrase", [
+        "where is tajmahal",     # shares "where is" with order tracking
+        "where is it",
+        "where is my stuff",
+        "what time is it",
+    ])
+    def test_structurally_similar_gibberish_rejected(self, phrase):
+        """Phrases that share filler/structure words with a real intent but
+        contain no topical keyword must NOT be misclassified."""
+        s = fresh()
+        assert "didn't quite catch" in bot(s, phrase)
+
     def test_fallback_offers_options(self):
         s = fresh()
         reply = bot(s, "asdfghjkl")
